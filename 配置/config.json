@@ -1,0 +1,20 @@
+# 媒体处理体系 配置文件
+{
+  "name": "媒体处理体系",
+  "version": "1.0.0",
+  "path": "D:/fanben/媒体处理体系",
+  "server": {
+    "host": "0.0.0.0",
+    "port": 5000,
+    "url": "http://localhost:5000"
+  },
+  "upload_dir": "D:/fanben/媒体处理体系/输入",
+  "output_dir": "D:/fanben/媒体处理体系/输出",
+  "copywriting": {
+    "ai_model": "gpt-3.5-turbo",
+    "ai_api_url": "https://api.openai.com/v1/chat/completions"
+  },
+  "download": {
+    "platforms": ["douyin", "kuaishou", "bilibili", "youtube", "xiaohongshu", "weibo"]
+  }
+}

@@ -1,0 +1,38 @@
+# 输出文件不上传
+输出/
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+
+# 临时文件
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Python虚拟环境
+venv/
+.venv/
+
+# 环境配置
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# 上传目录
+输入/
+
+# 下载缓存
+downloads/
+*.part
