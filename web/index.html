@@ -656,19 +656,26 @@ select.input-field {
           <div class="grid-2">
             <div>
               <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px">水印类型</label>
-              <select class="input-field" id="wmType">
+              <select class="input-field" id="wmType" onchange="updateWmMethodHint()">
+                <option value="auto">自动检测</option>
                 <option value="static">静态（固定位置）</option>
                 <option value="dynamic">动态（移动水印）</option>
               </select>
             </div>
             <div>
-              <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px">处理方法</label>
-              <select class="input-field" id="wmMethod">
-                <option value="inpaint">智能修复（推荐）</option>
-                <option value="blur">高斯模糊</option>
+              <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px">去水印方法</label>
+              <select class="input-field" id="wmMethod" onchange="updateWmMethodHint()">
+                <option value="auto">🤖 自动推荐（智能选择最佳）</option>
+                <option value="median">L1 帧累积中值 — 无痕首选</option>
+                <option value="alpha">L2 Alpha反演 — 半透明水印</option>
+                <option value="optical_flow">L3 光流修复 — 帧间借用</option>
+                <option value="delogo">L4 ffmpeg delogo — 极速模式</option>
+                <option value="inpaint">L5 增强Inpaint — 精确修复</option>
+                <option value="all">🔥 尝试所有方法</option>
               </select>
             </div>
           </div>
+          <div id="wmMethodHint" style="margin-top:8px;font-size:10px;color:var(--text-muted);font-family:monospace;line-height:1.5"></div>
         </div>
       </div>
 
@@ -1043,6 +1050,20 @@ function setupCanvasDrawing(canvas, img) {
   canvas.onmouseleave = () => { isDrawing = false; };
 }
 
+function updateWmMethodHint() {
+  const hints = {
+    'auto': '系统分析视频特征后自动选择最佳方法',
+    'median': 'L1 | 取多帧中值自然滤除水印 | 动态水印首选 | 速度:中等 | 效果:★★★★★',
+    'alpha': 'L2 | 估计水印透明度逆向恢复背景 | 半透明角标 | 速度:快 | 效果:★★★★',
+    'optical_flow': 'L3 | 从邻近帧借用背景像素 | 运动场景 | 速度:慢 | 效果:★★★★',
+    'delogo': 'L4 | ffmpeg原生滤镜相邻像素插值 | 极速处理 | 速度:极快 | 效果:★★★',
+    'inpaint': 'L5 | 精确mask+Poisson融合+双边去噪 | 通用 | 速度:中等 | 效果:★★★☆',
+    'all': '依次尝试所有5种方法 | 返回最佳结果 | 速度:慢 | 效果:最佳'
+  };
+  const m = document.getElementById('wmMethod').value;
+  document.getElementById('wmMethodHint').textContent = hints[m] || '';
+}
+
 async function executeWatermarkRemove() {
   const filepath = document.getElementById('wmFileSelect').value;
   if (!filepath) return showToast('请先选择文件', 'error');
@@ -1050,6 +1071,8 @@ async function executeWatermarkRemove() {
 
   const wmType = document.getElementById('wmType').value;
   const wmMethod = document.getElementById('wmMethod').value;
+
+  document.getElementById('wmResults').innerHTML = '<div class="section-card"><div class="section-body" style="font-family:monospace;color:var(--primary)">⏳ 正在处理... 方法: ' + wmMethod + '</div></div>';
 
   const res = await fetch('/api/watermark/remove', {
     method: 'POST',
@@ -1065,16 +1088,31 @@ async function executeWatermarkRemove() {
     document.getElementById('wmResults').innerHTML = 
       `<div class="section-card"><div class="section-body" style="color:var(--danger)">${data.error}</div></div>`;
   } else {
-    document.getElementById('wmResults').innerHTML = `
+    let html = `
       <div class="section-card">
-        <div class="section-header"><h3>✅ 去水印完成</h3></div>
+        <div class="section-header">
+          <h3>✅ 去水印完成</h3>
+          <span style="font-size:10px;color:var(--tertiary);font-family:monospace">${data.method}</span>
+        </div>
         <div class="section-body">
           <p style="font-family:monospace;font-size:12px">输出: ${data.output}</p>
-          <p style="font-size:11px;color:var(--text-dim)">方法: ${data.method} | 
-          处理帧: ${data.processed_frames || 'N/A'}</p>
-          <button class="btn primary" style="margin-top:8px" onclick="downloadFile('${data.output.split('/').pop().split('\\').pop()}')">下载结果</button>
+          <p style="font-size:11px;color:var(--text-dim)">
+            检测类型: ${data.detected_type || 'N/A'} | 
+            水印区域: [${(data.roi||[]).join(', ')}]
+          </p>`;
+    
+    if (data.all_methods_results) {
+      html += `<div style="margin-top:8px"><strong style="font-size:11px;color:var(--secondary)">所有方法结果:</strong></div>`;
+      data.all_methods_results.forEach(r => {
+        html += `<p style="font-size:10px;color:var(--text-dim);font-family:monospace;margin:2px 0">  ${r.method}: ${r.success ? '✅' : '❌'}</p>`;
+      });
+    }
+    
+    html += `
+          <button class="btn primary" style="margin-top:8px" onclick="downloadFile('${data.output.split('/').pop().split('\\\\').pop()}')">下载结果</button>
         </div>
       </div>`;
+    document.getElementById('wmResults').innerHTML = html;
     await refreshUploadedFiles();
   }
 }
